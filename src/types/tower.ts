@@ -9,6 +9,8 @@ export type TowerParameters = {
   floorThickness: number;
   gradientStart: string;
   gradientEnd: string;
+  animate: boolean;
+  animationSpeed: number;
 };
 
 export type TowerFloor = {
@@ -17,4 +19,8 @@ export type TowerFloor = {
   rotation: number;
   radius: number;
   color: string;
+  offsetX: number;
+  offsetZ: number;
+  scaleX: number;
+  scaleZ: number;
 };

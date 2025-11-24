@@ -30,6 +30,13 @@ body {
 
 .viewport {
   min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+}
+
+.viewport canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .sidebar {
@@ -70,6 +77,72 @@ body {
   color: #d6dcff;
 }
 
+.button-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.button-row button {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f6f7fb;
+  border-radius: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.button-row button:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.controls-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: #d6dcff;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.5rem;
+}
+
+.controls-grid input[type="range"] {
+  width: 100%;
+  accent-color: #3a7bd5;
+}
+
+.controls-grid input[type="color"] {
+  width: 100%;
+  height: 2rem;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.controls-grid small {
+  color: #99a8c9;
+  font-size: 0.85rem;
+}
+
+.checkbox-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
 section {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 0.75rem;
@@ -88,4 +161,31 @@ section {
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
   }
+}
+
+.webgl-warning {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  color: #f6f7fb;
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03) 8px, rgba(255, 255, 255, 0.01) 8px, rgba(255, 255, 255, 0.01) 16px);
+}
+
+.webgl-warning h2 {
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.webgl-warning ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 1.25rem;
+  text-align: left;
+  color: #d6dcff;
 }
