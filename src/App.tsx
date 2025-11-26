@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { TowerScene } from "./components/TowerScene";
+import { ProfileMapper } from "./components/ProfileMapper";
 import type { TowerParameters } from "./types/tower";
 
 const defaultParams: TowerParameters = {
@@ -12,10 +13,12 @@ const defaultParams: TowerParameters = {
   scaleMin: 0.7,
   scaleMax: 1.4,
   floorThickness: 0.65,
+  slabSides: 4,
   gradientStart: "#22aed1",
   gradientEnd: "#f26419",
   animate: true,
   animationSpeed: 2.5,
+  profilePoints: [1.05, 1.1, 0.92, 1.2, 1.0],
 };
 
 const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
@@ -37,6 +40,31 @@ export default function App() {
     setParams((p) => ({ ...p, [key]: e.target.checked }));
   };
 
+  const handleProfilePoints = (points: number[]) => {
+    setParams((p) => ({ ...p, profilePoints: points }));
+  };
+
+  const handleProfileHandleCount = (nextCount: number) => {
+    const count = clamp(Math.round(nextCount), 2, 8);
+    setParams((p) => {
+      const current = p.profilePoints || [];
+      if (current.length === count) return p;
+      if (current.length === 0) {
+        return { ...p, profilePoints: Array.from({ length: count }, () => 1) };
+      }
+      const resampled: number[] = [];
+      for (let i = 0; i < count; i += 1) {
+        const t = (i / (count - 1)) * (current.length - 1);
+        const base = Math.floor(t);
+        const frac = t - base;
+        const a = current[base] ?? 1;
+        const b = current[Math.min(base + 1, current.length - 1)] ?? a;
+        resampled.push(a + (b - a) * frac);
+      }
+      return { ...p, profilePoints: resampled };
+    });
+  };
+
   const handleReset = () => setParams({ ...defaultParams });
   const handleRandomize = () => {
     const randomBetween = (min: number, max: number, step = 0.01) => {
@@ -45,9 +73,17 @@ export default function App() {
     };
     const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
     const randomColor = () => `#${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0")}`;
+    const randomProfilePoints = (count: number) => {
+      const points: number[] = [];
+      for (let i = 0; i < count; i += 1) {
+        points.push(randomBetween(0.65, 1.45, 0.05));
+      }
+      return points;
+    };
 
     const scaleMin = randomBetween(0.3, 1.2, 0.05);
     const scaleMax = randomBetween(scaleMin + 0.1, 2.1, 0.05);
+    const profileCount = randomInt(3, 6);
 
     setParams({
       floorCount: randomInt(18, 100),
@@ -58,10 +94,12 @@ export default function App() {
       twistMax: randomInt(45, 330),
       scaleMin,
       scaleMax,
+      slabSides: randomInt(3, 18),
       gradientStart: randomColor(),
       gradientEnd: randomColor(),
       animate: Math.random() > 0.3,
       animationSpeed: randomBetween(0.5, 3.5, 0.1),
+      profilePoints: randomProfilePoints(profileCount),
     });
   };
 
@@ -87,6 +125,26 @@ export default function App() {
           </button>
         </div>
 
+        <section className="profile-section">
+          <h2>Profile Curve</h2>
+          <p className="muted">
+            Shape the tower radius along its height with graph handles and adjust how many handles you want to tweak.
+          </p>
+          <label className="inline-range">
+            <span>Profile handles</span>
+            <input
+              type="range"
+              min={2}
+              max={8}
+              step={1}
+              value={params.profilePoints.length}
+              onChange={(e) => handleProfileHandleCount(Number(e.target.value))}
+            />
+            <small>{params.profilePoints.length}</small>
+          </label>
+          <ProfileMapper points={params.profilePoints} onChange={handleProfilePoints} />
+        </section>
+
         <div className="controls-grid">
           <label>
             <span>Floors</span>
@@ -109,14 +167,19 @@ export default function App() {
             <small>{params.floorThickness.toFixed(2)}</small>
           </label>
           <label>
+            <span>Slab Sides</span>
+            <input type="range" min={3} max={24} step={1} value={params.slabSides} onChange={handleNumber("slabSides", 3, 24)} />
+            <small>{params.slabSides}</small>
+          </label>
+          <label>
             <span>Twist Min</span>
             <input type="range" min={-180} max={0} step={1} value={params.twistMin} onChange={handleNumber("twistMin", -180, 0)} />
-            <small>{params.twistMin.toFixed(0)}°</small>
+            <small>{params.twistMin.toFixed(0)}deg</small>
           </label>
           <label>
             <span>Twist Max</span>
             <input type="range" min={0} max={360} step={1} value={params.twistMax} onChange={handleNumber("twistMax", 0, 360)} />
-            <small>{params.twistMax.toFixed(0)}°</small>
+            <small>{params.twistMax.toFixed(0)}deg</small>
           </label>
           <label>
             <span>Scale Min</span>

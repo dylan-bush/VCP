@@ -1,7 +1,8 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, StatsGl, Edges, Grid } from "@react-three/drei";
-import { BoxGeometry, Group } from "three";
+import { CylinderGeometry, Group, Fog } from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 import { buildTower } from "../lib/tower";
 import type { TowerParameters, TowerFloor } from "../types/tower";
@@ -15,11 +16,37 @@ type TowerContentProps = {
   tower: ReturnType<typeof buildTower>;
 };
 
+const AdaptiveFog = ({ color, baseNear, baseFar, span }: { color: string; baseNear: number; baseFar: number; span: number }) => {
+  const { scene, camera } = useThree();
+
+  useEffect(() => {
+    const fog = new Fog(color, baseNear, baseFar);
+    scene.fog = fog;
+    return () => {
+      if (scene.fog === fog) scene.fog = null;
+    };
+  }, [scene, color, baseNear, baseFar]);
+
+  useFrame(() => {
+    const distance = camera.position.length();
+    const near = Math.max(baseNear, distance * 0.65);
+    const far = Math.max(baseFar, near + span * 4, distance * 1.4 + span * 2);
+    const fog = scene.fog as Fog | null;
+    if (fog) {
+      fog.near = near;
+      fog.far = far;
+    }
+  });
+
+  return null;
+};
+
 const TowerSlab = ({ floor, thickness }: { floor: TowerFloor; thickness: number }) => {
-  const geometry = useMemo(
-    () => new BoxGeometry(floor.scaleX * 2, thickness, floor.scaleZ * 2, 1, 1, 1),
-    [floor.scaleX, floor.scaleZ, thickness]
-  );
+  const geometry = useMemo(() => {
+    const geo = new CylinderGeometry(1, 1, thickness, floor.sides, 1, false);
+    geo.scale(floor.scaleX, 1, floor.scaleZ);
+    return geo;
+  }, [floor.scaleX, floor.scaleZ, floor.sides, thickness]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -101,6 +128,7 @@ const hasWebGL2 = () => {
 export const TowerScene = ({ params }: TowerSceneProps) => {
   const [webglReady, setWebglReady] = useState(true);
   const [showStats, setShowStats] = useState(false);
+  const controlsRef = useRef<OrbitControlsImpl>(null);
   const tower = buildTower(params);
 
   useEffect(() => {
@@ -122,6 +150,18 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
   }
 
   const cameraDistance = Math.max(tower.height, tower.baseRadius * 6);
+  const sceneSpan = Math.max(tower.height, tower.baseRadius * 8);
+  // Keep fog distances wide enough so compact towers or zoomed-out views do not get swallowed by darkness.
+  const fogNear = Math.max(12, sceneSpan * 0.4);
+  const fogFar = Math.max(fogNear + 250, sceneSpan * 5);
+  const minDistance = Math.max(6, tower.baseRadius * 1.35);
+  const maxDistance = Math.max(tower.height * 3.5, tower.baseRadius * 18);
+
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    controlsRef.current.target.set(0, 0, 0);
+    controlsRef.current.update();
+  }, [tower.height, tower.baseRadius]);
 
   return (
     <Canvas
@@ -130,12 +170,24 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
       dpr={[1, 2]}
     >
       <color attach="background" args={["#030712"]} />
-      <fog attach="fog" args={["#050914", tower.baseRadius * 1.5, tower.height * 5]} />
+      <AdaptiveFog color="#050914" baseNear={fogNear} baseFar={fogFar} span={sceneSpan} />
       <Suspense fallback={null}>
         <TowerContent params={params} tower={tower} />
       </Suspense>
       {showStats && <StatsGl className="stats" />}
-      <OrbitControls enableDamping dampingFactor={0.1} maxPolarAngle={Math.PI * 0.475} />
+      <OrbitControls
+        ref={controlsRef}
+        enableDamping
+        dampingFactor={0.12}
+        maxPolarAngle={Math.PI * 0.48}
+        minPolarAngle={0}
+        minDistance={minDistance}
+        maxDistance={maxDistance}
+        zoomSpeed={1.2}
+        rotateSpeed={0.95}
+        panSpeed={0.95}
+        target={[0, 0, 0]}
+      />
     </Canvas>
   );
 };

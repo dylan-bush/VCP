@@ -189,3 +189,71 @@ section {
   text-align: left;
   color: #d6dcff;
 }
+
+.muted {
+  color: #9cadcc;
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.6rem;
+}
+
+.inline-range {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.inline-range small {
+  color: #99a8c9;
+  min-width: 2.5ch;
+  text-align: right;
+}
+
+.profile-mapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: rgba(7, 13, 24, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.65rem;
+  padding: 0.7rem;
+}
+
+.profile-mapper__chart {
+  background: radial-gradient(circle at 20% 20%, rgba(98, 155, 255, 0.08), rgba(10, 18, 30, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.55rem;
+  padding: 0.35rem;
+}
+
+.profile-mapper__chart svg {
+  width: 100%;
+  height: 140px;
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.profile-mapper__inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+.profile-mapper__inputs label {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

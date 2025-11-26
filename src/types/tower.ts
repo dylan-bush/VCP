@@ -7,10 +7,12 @@ export type TowerParameters = {
   scaleMin: number;
   scaleMax: number;
   floorThickness: number;
+  slabSides: number;
   gradientStart: string;
   gradientEnd: string;
   animate: boolean;
   animationSpeed: number;
+  profilePoints: number[];
 };
 
 export type TowerFloor = {
@@ -23,4 +25,5 @@ export type TowerFloor = {
   offsetZ: number;
   scaleX: number;
   scaleZ: number;
+  sides: number;
 };
