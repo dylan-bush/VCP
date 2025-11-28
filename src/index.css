@@ -23,11 +23,12 @@ body {
 
 .app-shell {
   min-height: 100vh;
-  height: 100vh;
+  height: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--sidebar-width, 340px);
   background: radial-gradient(circle at top, #0f1a33, #040509 55%);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
 }
 
@@ -37,6 +38,10 @@ body {
   display: flex;
   align-items: stretch;
   overflow: hidden;
+}
+
+.mobile-controls-link {
+  display: none;
 }
 
 .viewport canvas {
@@ -263,6 +268,32 @@ section {
 
   .sidebar-resize-handle {
     display: none;
+  }
+
+  .viewport {
+    height: 55vh;
+    min-height: 55vh;
+    max-height: 60vh;
+    overflow: hidden;
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
+  }
+
+  .mobile-controls-link {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: rgba(6, 10, 18, 0.9);
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .mobile-controls-link a {
+    color: #9bd5ff;
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: 0.05em;
   }
 }
 

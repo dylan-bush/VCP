@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CylinderGeometry, Matrix4, Color } from "three";
 
 import { TowerScene } from "./components/TowerScene";
@@ -22,6 +22,7 @@ const defaultParams: TowerParameters = {
   animationSpeed: 2.5,
   profilePoints: [1.05, 1.1, 0.92, 1.2, 1.0],
   floorProfilePoints: [1, 0.9, 1.1, 1.0],
+  lighting: "neutral",
 };
 
 const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
@@ -51,6 +52,9 @@ export default function App() {
 
   const handleCheckbox = (key: keyof TowerParameters) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setParams((p) => ({ ...p, [key]: e.target.checked }));
+  };
+  const handleSelect = (key: keyof TowerParameters) => (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setParams((p) => ({ ...p, [key]: e.target.value as TowerParameters[typeof key] }));
   };
 
   const handleProfilePoints = (points: number[]) => setParams((p) => ({ ...p, profilePoints: points }));
@@ -131,12 +135,41 @@ export default function App() {
       animationSpeed: randomBetween(0.5, 3.5, 0.1),
       profilePoints: randomProfilePoints(profileCount),
       floorProfilePoints: randomFloorProfilePoints(floorProfileCount),
+      lighting: (["neutral", "warm", "cool", "contrast", "soft", "shaded", "wireframe", "technical", "ghosted", "outline"] as const)[randomInt(0, 9)],
     });
   };
 
   const displayParams = useMemo(() => params, [params]);
   const toggleSection = (key: keyof typeof openSections) =>
     setOpenSections((s) => ({ ...s, [key]: !s[key] }));
+  const scrollTouchY = useRef<number | null>(null);
+
+  useEffect(() => {
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length < 3) {
+        scrollTouchY.current = null;
+        return;
+      }
+      const y = e.touches[0]?.clientY ?? 0;
+      if (scrollTouchY.current !== null) {
+        const dy = scrollTouchY.current - y;
+        window.scrollBy(0, dy);
+      }
+      scrollTouchY.current = y;
+      e.preventDefault();
+    };
+    const reset = () => {
+      scrollTouchY.current = null;
+    };
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", reset);
+    window.addEventListener("touchcancel", reset);
+    return () => {
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", reset);
+      window.removeEventListener("touchcancel", reset);
+    };
+  }, []);
   const handleSaveState = () => {
     setSavedStates((prev) => {
       const next = [...prev, JSON.parse(JSON.stringify(params))];
@@ -260,6 +293,9 @@ export default function App() {
 
   return (
     <div className="app-shell" style={{ ["--sidebar-width" as string]: `${sidebarWidth}px` }}>
+      <div className="mobile-controls-link">
+        <a href="#controls">Jump to Controls</a>
+      </div>
       <main className="viewport" aria-label="Parametric tower viewport">
         <TowerScene params={displayParams} />
       </main>
@@ -270,7 +306,7 @@ export default function App() {
         aria-label="Resize sidebar"
         onPointerDown={startSidebarResize}
       />
-      <aside className="sidebar">
+      <aside className="sidebar" id="controls">
         <header className="sidebar__header">
           <div className="state-controls">
             <button type="button" onClick={handleSaveState}>
@@ -289,6 +325,18 @@ export default function App() {
                   State {idx + 1}
                 </option>
               ))}
+            </select>
+            <select value={params.lighting} onChange={handleSelect("lighting")} aria-label="View mode">
+              <option value="neutral">View Mode: Neutral Studio</option>
+              <option value="warm">View Mode: Warm Sunset</option>
+              <option value="cool">View Mode: Cool Sky</option>
+              <option value="contrast">View Mode: Contrast Rim</option>
+              <option value="soft">View Mode: Soft Dome</option>
+              <option value="shaded">View Mode: Shaded</option>
+              <option value="wireframe">View Mode: Wireframe</option>
+              <option value="technical">View Mode: Technical</option>
+              <option value="ghosted">View Mode: Ghosted</option>
+              <option value="outline">View Mode: Profile Outlines</option>
             </select>
           </div>
           <div>

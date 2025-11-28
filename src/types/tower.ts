@@ -14,6 +14,17 @@ export type TowerParameters = {
   animationSpeed: number;
   profilePoints: number[];
   floorProfilePoints: number[];
+  lighting:
+    | "neutral"
+    | "warm"
+    | "cool"
+    | "contrast"
+    | "soft"
+    | "shaded"
+    | "wireframe"
+    | "technical"
+    | "ghosted"
+    | "outline";
 };
 
 export type TowerFloor = {
