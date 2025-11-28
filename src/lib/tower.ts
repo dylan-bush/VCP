@@ -25,6 +25,8 @@ export const buildTower = (params: TowerParameters) => {
   const rawTwistMax = toFiniteNumber(params.twistMax, 120);
   const rawProfilePoints =
     Array.isArray(params.profilePoints) && params.profilePoints.length > 0 ? params.profilePoints : [1];
+  const rawFloorProfilePoints =
+    Array.isArray(params.floorProfilePoints) && params.floorProfilePoints.length > 0 ? params.floorProfilePoints : [1];
 
   const floorCount = Math.max(1, Math.floor(rawFloorCount));
   const height = Math.max(1, rawHeight);
@@ -44,6 +46,7 @@ export const buildTower = (params: TowerParameters) => {
   const yOffset = -height / 2 + slabHeight / 2;
   const driftRadius = baseRadius * 0.25;
   const profilePoints = rawProfilePoints.map((v) => Math.min(Math.max(v, 0.25), 2.25));
+  const floorProfilePoints = rawFloorProfilePoints.map((v) => Math.min(Math.max(v, 0.6), 1.4));
   const profileSampler = (t: number) => {
     if (profilePoints.length === 1) return profilePoints[0];
     const clamped = Math.min(Math.max(t, 0), 1) * (profilePoints.length - 1);
@@ -51,6 +54,15 @@ export const buildTower = (params: TowerParameters) => {
     const frac = clamped - index;
     const a = profilePoints[index];
     const b = profilePoints[Math.min(index + 1, profilePoints.length - 1)];
+    return lerp(a, b, frac);
+  };
+  const floorProfileSampler = (t: number) => {
+    if (floorProfilePoints.length === 1) return floorProfilePoints[0];
+    const clamped = Math.min(Math.max(t, 0), 1) * (floorProfilePoints.length - 1);
+    const index = Math.floor(clamped);
+    const frac = clamped - index;
+    const a = floorProfilePoints[index];
+    const b = floorProfilePoints[Math.min(index + 1, floorProfilePoints.length - 1)];
     return lerp(a, b, frac);
   };
 
@@ -61,6 +73,7 @@ export const buildTower = (params: TowerParameters) => {
     const eased = easeInOut(ratio);
     const rotation = MathUtils.degToRad(lerp(twistStart, twistEnd, eased));
     const radiusScale = Math.min(Math.max(lerp(scaleStart, scaleEnd, eased) * profileSampler(eased), 0.15), 3);
+    const aspect = Math.min(Math.max(floorProfileSampler(eased), 0.6), 1.4);
     const radius = baseRadius * radiusScale;
     const color = startColor.clone().lerp(endColor, ratio).getStyle();
 
@@ -68,8 +81,8 @@ export const buildTower = (params: TowerParameters) => {
     const wobble2 = Math.cos(ratio * Math.PI * 1.5 + Math.PI / 3);
     const offsetX = Math.cos(rotation) * driftRadius * wobble;
     const offsetZ = Math.sin(rotation) * driftRadius * wobble2;
-    const scaleX = radius;
-    const scaleZ = radius * (0.7 + Math.abs(wobble) * 0.6);
+    const scaleX = radius * aspect;
+    const scaleZ = radius * Math.max(0.5, 2 - aspect) * (0.85 + Math.abs(wobble) * 0.25);
 
     floors.push({
       index: i,

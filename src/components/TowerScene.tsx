@@ -14,6 +14,7 @@ type TowerSceneProps = {
 type TowerContentProps = {
   params: TowerParameters;
   tower: ReturnType<typeof buildTower>;
+  offset: readonly [number, number, number];
 };
 
 const AdaptiveFog = ({ color, baseNear, baseFar, span }: { color: string; baseNear: number; baseFar: number; span: number }) => {
@@ -64,7 +65,7 @@ const TowerSlab = ({ floor, thickness }: { floor: TowerFloor; thickness: number 
   );
 };
 
-const TowerContent = ({ params, tower }: TowerContentProps) => {
+const TowerContent = ({ params, tower, offset }: TowerContentProps) => {
   const baseRadius = tower.baseRadius;
   const height = tower.height;
   const groupRef = useRef<Group>(null);
@@ -78,31 +79,33 @@ const TowerContent = ({ params, tower }: TowerContentProps) => {
   return (
     <>
       <ambientLight intensity={0.75} />
-      <hemisphereLight args={["#94a5ff", "#050505", 0.9]} position={[0, height, 0]} />
-      <directionalLight
-        position={[baseRadius * 4, height * 1.6, baseRadius * 3]}
-        intensity={1.35}
-        castShadow
-      />
-      <spotLight position={[-baseRadius * 4, height * 2, -baseRadius * 2]} intensity={0.9} angle={0.6} castShadow />
-      <group ref={groupRef}>
-        {tower.floors.map((floor) => (
-          <TowerSlab key={floor.index} floor={floor} thickness={tower.slabHeight} />
-        ))}
+      <group position={offset}>
+        <hemisphereLight args={["#94a5ff", "#050505", 0.9]} position={[0, height, 0]} />
+        <directionalLight
+          position={[baseRadius * 4, height * 1.6, baseRadius * 3]}
+          intensity={1.35}
+          castShadow
+        />
+        <spotLight position={[-baseRadius * 4, height * 2, -baseRadius * 2]} intensity={0.9} angle={0.6} castShadow />
+        <group ref={groupRef}>
+          {tower.floors.map((floor) => (
+            <TowerSlab key={floor.index} floor={floor} thickness={tower.slabHeight} />
+          ))}
+        </group>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -height / 2 - 0.05, 0]}>
+          <planeGeometry args={[baseRadius * 14, baseRadius * 14]} />
+          <meshStandardMaterial color="#10182c" roughness={0.85} metalness={0.05} />
+        </mesh>
+        <Grid
+          args={[50, 50]}
+          position={[0, -height / 2 - 0.049, 0]}
+          cellColor="#1b385f"
+          sectionColor="#3a7bd5"
+          infiniteGrid
+          fadeDistance={60}
+          fadeStrength={6}
+        />
       </group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -height / 2 - 0.05, 0]}>
-        <planeGeometry args={[baseRadius * 14, baseRadius * 14]} />
-        <meshStandardMaterial color="#10182c" roughness={0.85} metalness={0.05} />
-      </mesh>
-      <Grid
-        args={[50, 50]}
-        position={[0, -height / 2 - 0.049, 0]}
-        cellColor="#1b385f"
-        sectionColor="#3a7bd5"
-        infiniteGrid
-        fadeDistance={60}
-        fadeStrength={6}
-      />
     </>
   );
 };
@@ -129,7 +132,7 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
   const [webglReady, setWebglReady] = useState(true);
   const [showStats, setShowStats] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl>(null);
-  const tower = buildTower(params);
+  const tower = useMemo(() => buildTower(params), [params]);
 
   useEffect(() => {
     setWebglReady(hasWebGL());
@@ -149,19 +152,53 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
     );
   }
 
+  const towerBounds = useMemo(() => {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+
+    tower.floors.forEach((floor) => {
+      const radius = Math.max(floor.scaleX, floor.scaleZ);
+      minX = Math.min(minX, floor.offsetX - radius);
+      maxX = Math.max(maxX, floor.offsetX + radius);
+      minZ = Math.min(minZ, floor.offsetZ - radius);
+      maxZ = Math.max(maxZ, floor.offsetZ + radius);
+      minY = Math.min(minY, floor.positionY - tower.slabHeight / 2);
+      maxY = Math.max(maxY, floor.positionY + tower.slabHeight / 2);
+    });
+
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+      return { center: [0, 0, 0] as const, span: tower.height };
+    }
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+    const span = Math.max(maxX - minX, maxY - minY, maxZ - minZ, tower.height);
+
+    return { center: [centerX, centerY, centerZ] as const, span };
+  }, [tower]);
+
   const cameraDistance = Math.max(tower.height, tower.baseRadius * 6);
-  const sceneSpan = Math.max(tower.height, tower.baseRadius * 8);
+  const sceneSpan = Math.max(tower.height, tower.baseRadius * 8, towerBounds.span * 1.1);
   // Keep fog distances wide enough so compact towers or zoomed-out views do not get swallowed by darkness.
   const fogNear = Math.max(12, sceneSpan * 0.4);
   const fogFar = Math.max(fogNear + 250, sceneSpan * 5);
   const minDistance = Math.max(6, tower.baseRadius * 1.35);
   const maxDistance = Math.max(tower.height * 3.5, tower.baseRadius * 18);
+  const modelOffset = useMemo(
+    () => [-towerBounds.center[0], -towerBounds.center[1], -towerBounds.center[2]] as const,
+    [towerBounds.center]
+  );
 
   useEffect(() => {
     if (!controlsRef.current) return;
     controlsRef.current.target.set(0, 0, 0);
     controlsRef.current.update();
-  }, [tower.height, tower.baseRadius]);
+  }, [towerBounds]);
 
   return (
     <Canvas
@@ -172,7 +209,7 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
       <color attach="background" args={["#030712"]} />
       <AdaptiveFog color="#050914" baseNear={fogNear} baseFar={fogFar} span={sceneSpan} />
       <Suspense fallback={null}>
-        <TowerContent params={params} tower={tower} />
+        <TowerContent params={params} tower={tower} offset={modelOffset} />
       </Suspense>
       {showStats && <StatsGl className="stats" />}
       <OrbitControls

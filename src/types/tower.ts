@@ -13,6 +13,7 @@ export type TowerParameters = {
   animate: boolean;
   animationSpeed: number;
   profilePoints: number[];
+  floorProfilePoints: number[];
 };
 
 export type TowerFloor = {
