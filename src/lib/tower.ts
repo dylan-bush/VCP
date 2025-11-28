@@ -27,6 +27,23 @@ export const buildTower = (params: TowerParameters) => {
     Array.isArray(params.profilePoints) && params.profilePoints.length > 0 ? params.profilePoints : [1];
   const rawFloorProfilePoints =
     Array.isArray(params.floorProfilePoints) && params.floorProfilePoints.length > 0 ? params.floorProfilePoints : [1];
+  const makeSmoothSampler = (values: number[]) => {
+    if (values.length === 0) return () => 1;
+    return (t: number) => {
+      const clampedT = Math.min(Math.max(t, 0), 1);
+      if (values.length === 1) return values[0];
+      const scaled = clampedT * (values.length - 1);
+      const i = Math.floor(scaled);
+      const localT = scaled - i;
+      const v0 = values[Math.max(i - 1, 0)];
+      const v1 = values[i];
+      const v2 = values[Math.min(i + 1, values.length - 1)];
+      const v3 = values[Math.min(i + 2, values.length - 1)];
+      const tt = localT * localT;
+      const ttt = tt * localT;
+      return 0.5 * (2 * v1 + (v2 - v0) * localT + (2 * v0 - 5 * v1 + 4 * v2 - v3) * tt + (v3 - v0 + 3 * (v1 - v2)) * ttt);
+    };
+  };
 
   const floorCount = Math.max(1, Math.floor(rawFloorCount));
   const height = Math.max(1, rawHeight);
@@ -47,24 +64,8 @@ export const buildTower = (params: TowerParameters) => {
   const driftRadius = baseRadius * 0.25;
   const profilePoints = rawProfilePoints.map((v) => Math.min(Math.max(v, 0.25), 2.25));
   const floorProfilePoints = rawFloorProfilePoints.map((v) => Math.min(Math.max(v, 0.6), 1.4));
-  const profileSampler = (t: number) => {
-    if (profilePoints.length === 1) return profilePoints[0];
-    const clamped = Math.min(Math.max(t, 0), 1) * (profilePoints.length - 1);
-    const index = Math.floor(clamped);
-    const frac = clamped - index;
-    const a = profilePoints[index];
-    const b = profilePoints[Math.min(index + 1, profilePoints.length - 1)];
-    return lerp(a, b, frac);
-  };
-  const floorProfileSampler = (t: number) => {
-    if (floorProfilePoints.length === 1) return floorProfilePoints[0];
-    const clamped = Math.min(Math.max(t, 0), 1) * (floorProfilePoints.length - 1);
-    const index = Math.floor(clamped);
-    const frac = clamped - index;
-    const a = floorProfilePoints[index];
-    const b = floorProfilePoints[Math.min(index + 1, floorProfilePoints.length - 1)];
-    return lerp(a, b, frac);
-  };
+  const profileSampler = makeSmoothSampler(profilePoints);
+  const floorProfileSampler = makeSmoothSampler(floorProfilePoints);
 
   const floors: TowerFloor[] = [];
 

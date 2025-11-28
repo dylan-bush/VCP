@@ -29,11 +29,14 @@ export const ProfileMapper = ({ points, onChange, min = 0.4, max = 1.8 }: Profil
   const nearestIndexFromClientX = (clientX: number) => {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return 0;
-    const x = clientX - rect.left;
+    if (points.length === 1) return 0;
+    const scaleX = rect.width / width;
+    const step = width / (points.length - 1);
+    const x = (clientX - rect.left) / scaleX;
     let best = 0;
     let bestDist = Number.POSITIVE_INFINITY;
     for (let i = 0; i < points.length; i += 1) {
-      const px = i * stepX;
+      const px = i * step;
       const dist = Math.abs(px - x);
       if (dist < bestDist) {
         best = i;
@@ -49,10 +52,26 @@ export const ProfileMapper = ({ points, onChange, min = 0.4, max = 1.8 }: Profil
       const x = i * stepX;
       const norm = (clamp(val, min, max) - min) / (max - min);
       const y = height - norm * height;
-      return [x, y] as const;
+      return { x, y };
     });
-    return coords.map(([x, y], idx) => `${idx === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
-  }, [points, min, max, width, height]);
+    if (coords.length === 1) return `M ${coords[0].x.toFixed(2)} ${coords[0].y.toFixed(2)}`;
+
+    const d: string[] = [`M ${coords[0].x.toFixed(2)} ${coords[0].y.toFixed(2)}`];
+    for (let i = 1; i < coords.length; i += 1) {
+      const p0 = coords[i - 1];
+      const p1 = coords[i];
+      const pBefore = coords[i - 2] ?? p0;
+      const pAfter = coords[i + 1] ?? p1;
+      const cp1x = p0.x + (p1.x - pBefore.x) / 6;
+      const cp1y = p0.y + (p1.y - pBefore.y) / 6;
+      const cp2x = p1.x - (pAfter.x - p0.x) / 6;
+      const cp2y = p1.y - (pAfter.y - p0.y) / 6;
+      d.push(
+        `C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)} ${cp2x.toFixed(2)} ${cp2y.toFixed(2)} ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`
+      );
+    }
+    return d.join(" ");
+  }, [points, min, max, height, stepX]);
 
   const handlePointChange = (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = [...points];
@@ -80,18 +99,29 @@ export const ProfileMapper = ({ points, onChange, min = 0.4, max = 1.8 }: Profil
     };
   }, [dragIndex, points, min, max]);
 
+  const startDrag = (idx: number, clientY: number) => {
+    setDragIndex(idx);
+    updateFromPointer(idx, clientY);
+  };
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!points.length) return;
     e.preventDefault();
     const idx = nearestIndexFromClientX(e.clientX);
-    setDragIndex(idx);
-    updateFromPointer(idx, e.clientY);
+    startDrag(idx, e.clientY);
   };
 
   return (
     <div className="profile-mapper">
       <div className="profile-mapper__chart">
-        <svg ref={svgRef} viewBox={viewBox} role="img" aria-label="Tower profile curve" onPointerDown={onPointerDown}>
+        <svg
+          ref={svgRef}
+          viewBox={viewBox}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label="Tower profile curve"
+          onPointerDown={onPointerDown}
+        >
           <defs>
             <linearGradient id="profileGradient" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor="#61d2ff" stopOpacity="0.8" />
@@ -113,6 +143,12 @@ export const ProfileMapper = ({ points, onChange, min = 0.4, max = 1.8 }: Profil
                 fill={dragIndex === i ? "#c9e8ff" : "#b4e0ff"}
                 stroke="#143a66"
                 strokeWidth="1.5"
+                pointerEvents="all"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  (e.target as Element)?.setPointerCapture?.(e.pointerId);
+                  startDrag(i, e.clientY);
+                }}
               />
             );
           })}
