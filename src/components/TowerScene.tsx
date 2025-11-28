@@ -15,6 +15,8 @@ type TowerContentProps = {
   params: TowerParameters;
   tower: ReturnType<typeof buildTower>;
   offset: readonly [number, number, number];
+  groundY: number;
+  fadeDistance: number;
 };
 
 const AdaptiveFog = ({ color, baseNear, baseFar, span }: { color: string; baseNear: number; baseFar: number; span: number }) => {
@@ -65,7 +67,7 @@ const TowerSlab = ({ floor, thickness }: { floor: TowerFloor; thickness: number 
   );
 };
 
-const TowerContent = ({ params, tower, offset }: TowerContentProps) => {
+const TowerContent = ({ params, tower, offset, groundY, fadeDistance }: TowerContentProps) => {
   const baseRadius = tower.baseRadius;
   const height = tower.height;
   const groupRef = useRef<Group>(null);
@@ -92,18 +94,18 @@ const TowerContent = ({ params, tower, offset }: TowerContentProps) => {
             <TowerSlab key={floor.index} floor={floor} thickness={tower.slabHeight} />
           ))}
         </group>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -height / 2 - 0.05, 0]}>
-          <planeGeometry args={[baseRadius * 14, baseRadius * 14]} />
-          <meshStandardMaterial color="#10182c" roughness={0.85} metalness={0.05} />
-        </mesh>
         <Grid
-          args={[50, 50]}
-          position={[0, -height / 2 - 0.049, 0]}
-          cellColor="#1b385f"
-          sectionColor="#3a7bd5"
+          args={[80, 80]}
+          position={[0, groundY - 0.021, 0]}
+          cellSize={1.8}
+          sectionSize={8}
+          cellThickness={0.4}
+          sectionThickness={1}
+          cellColor="rgba(40, 74, 109, 0.45)"
+          sectionColor="rgba(80, 140, 220, 0.8)"
           infiniteGrid
-          fadeDistance={60}
-          fadeStrength={6}
+          fadeDistance={fadeDistance}
+          fadeStrength={0.35}
         />
       </group>
     </>
@@ -171,7 +173,7 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
     });
 
     if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
-      return { center: [0, 0, 0] as const, span: tower.height };
+      return { center: [0, 0, 0] as const, span: tower.height, minY: -tower.height / 2 };
     }
 
     const centerX = (minX + maxX) / 2;
@@ -179,7 +181,7 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
     const centerZ = (minZ + maxZ) / 2;
     const span = Math.max(maxX - minX, maxY - minY, maxZ - minZ, tower.height);
 
-    return { center: [centerX, centerY, centerZ] as const, span };
+    return { center: [centerX, centerY, centerZ] as const, span, minY };
   }, [tower]);
 
   const cameraDistance = Math.max(tower.height, tower.baseRadius * 6);
@@ -193,6 +195,11 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
     () => [-towerBounds.center[0], -towerBounds.center[1], -towerBounds.center[2]] as const,
     [towerBounds.center]
   );
+  const groundYLocal = useMemo(
+    () => towerBounds.minY - towerBounds.center[1],
+    [towerBounds.minY, towerBounds.center]
+  );
+  const gridFadeDistance = useMemo(() => Math.max(sceneSpan * 3, 180), [sceneSpan]);
 
   useEffect(() => {
     if (!controlsRef.current) return;
@@ -209,7 +216,13 @@ export const TowerScene = ({ params }: TowerSceneProps) => {
       <color attach="background" args={["#030712"]} />
       <AdaptiveFog color="#050914" baseNear={fogNear} baseFar={fogFar} span={sceneSpan} />
       <Suspense fallback={null}>
-        <TowerContent params={params} tower={tower} offset={modelOffset} />
+        <TowerContent
+          params={params}
+          tower={tower}
+          offset={modelOffset}
+          groundY={groundYLocal}
+          fadeDistance={gridFadeDistance}
+        />
       </Suspense>
       {showStats && <StatsGl className="stats" />}
       <OrbitControls
